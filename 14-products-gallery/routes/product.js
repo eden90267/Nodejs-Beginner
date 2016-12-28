@@ -4,6 +4,8 @@ var router = express.Router();
 var levelup = require('levelup');
 var db = levelup('./db');
 
+var EventEmitter = require('events');
+
 /**
  * GET /1/product
  *
@@ -46,17 +48,34 @@ router.get('/:id', function(req, res, next) {
  * Add a new product.
  */
 router.post('/', function(req, res, next) {
-	var object = {
-		name: req.body.name,
-		type: req.body.type,
-		price: req.body.price,
-		date: new Date()
-	};
+    var workflow = new EventEmitter();
 
-	db.put(req.body.id, JSON.stringify(object), function(err) {
-        if (err) return console.log('Ooops!', err) // some kind of I/O error
-        res.json(object);
-	});  
+    workflow.on('validate', function () {
+    	if (!req.body.name) return workflow.emit('error', 'name empty');
+        workflow.emit('create');
+    });
+
+    workflow.on('error', function (msg) {
+        res.send({
+        	errors: msg
+		});
+    });
+
+    workflow.on('create', function () {
+        var object = {
+            name: req.body.name,
+            type: req.body.type,
+            price: req.body.price,
+            date: new Date()
+        };
+
+        db.put(req.body.id, JSON.stringify(object), function(err) {
+            if (err) return console.log('Ooops!', err) // some kind of I/O error
+            res.json(object);
+        });
+    });
+
+    workflow.emit('validate');
 });
 
 /**
