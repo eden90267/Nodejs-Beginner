@@ -84,12 +84,29 @@ router.post('/', function(req, res, next) {
  * Add a new product.
  */
 router.delete('/:id', function(req, res, next) {
-	db.del(req.body.id, function(err) {
-        if (err) return console.log('Ooops!', err) // some kind of I/O error
-        res.json({
-        	status: 'ok'
+    var workflow = new EventEmitter();
+
+    workflow.on('validate', function () {
+        workflow.emit('delete');
+    });
+
+    workflow.on('error', function (msg) {
+        res.send({
+            errors: msg
         });
-	});  	
+    });
+
+    workflow.on('delete', function () {
+        db.del(req.params.id, function(err) {
+            if (err) return workflow.emit('error', err);
+
+            res.json({
+                status: 'ok'
+            });
+        });
+    });
+
+    workflow.emit('validate');
 });
 
 module.exports = router;
