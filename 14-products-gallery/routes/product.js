@@ -10,6 +10,11 @@ var db = levelup('./db');
  * Get all products.
  */
 router.get('/', function(req, res, next) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    next();
+});
+
+router.get('/', function(req, res, next) {
 	var products = [];
 
 	db.createReadStream()
